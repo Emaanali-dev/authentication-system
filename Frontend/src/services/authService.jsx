@@ -44,15 +44,14 @@ export const authService = {
     }
   },
 
-  register: async (email, password, confirmPassword) => {
+  register: async (fullName, email, password, confirmPassword) => {
     try {
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, confirmPassword }),
-      });
+        body: JSON.stringify({ fullName, email, password, confirmPassword }),
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => []);
@@ -66,13 +65,12 @@ export const authService = {
         }
         throw new Error(errorMessage);
       }
+      
 
       return await response.json();
     } catch (err) {
-      // Offline Demo Fallback
       if (err.name === 'TypeError' || err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
         console.warn('Backend API is offline. Simulating registration in local storage.');
-        
         localStorage.setItem(`demo_user_${email.toLowerCase()}`, password);
         return { Message: 'Registration successful! (Demo Mode Enabled)' };
       }
