@@ -1,108 +1,28 @@
-﻿using Authentication.DTOs;
-using Authentication.Models;
-using Authentication.Services;
-using Microsoft.AspNetCore.Identity;
+﻿using Authentication.Models;
 using Microsoft.AspNetCore.Mvc;
+using Authentication.Services;
 
 namespace Authentication.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly TokenService _tokenService;
-
-        public AuthController(
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
-            TokenService tokenService)
+        private readonly AuthService _authService;
+        public AuthController(AuthService authService)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _tokenService = tokenService;
+            _authService = authService;
         }
-
-        // ==========================
-        // Register
-        // ==========================
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto model)
+        public async Task<IActionResult> Register(RegisterModel model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var result = await _authService.RegisterUser(model);
 
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            if (result.Succeeded)
+                return Ok(new { Message = result.Message });
 
-            if (existingUser != null)
-            {
-                return BadRequest(new
-                {
-                    Message = "Email already exists."
-                });
-            }
-
-            var user = new ApplicationUser
-            {
-                UserName = model.Email,
-                Email = model.Email
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
-            }
-
-            return Ok(new
-            {
-                Message = "User registered successfully."
-            });
-        }
-
-        // ==========================
-        // Login
-        // ==========================
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var user = await _userManager.FindByEmailAsync(model.Email);
-
-            if (user == null)
-            {
-                return Unauthorized(new
-                {
-                    Message = "Invalid Email or Password."
-                });
-            }
-
-            var result = await _signInManager.CheckPasswordSignInAsync(
-                user,
-                model.Password,
-                false);
-
-            if (!result.Succeeded)
-            {
-                return Unauthorized(new
-                {
-                    Message = "Invalid Email or Password."
-                });
-            }
-
-            var token = _tokenService.CreateToken(user);
-
-            return Ok(new
-            {
-                Token = token,
-                Email = user.Email
-            });
+            return BadRequest(result.Errors.Select(e => new { description = e }));
         }
     }
 }
